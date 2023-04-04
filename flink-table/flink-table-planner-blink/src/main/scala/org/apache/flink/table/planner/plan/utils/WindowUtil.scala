@@ -203,6 +203,11 @@ object WindowUtil {
         val step = getOperandAsLong(windowCall.operands(2))
         val maxSize = getOperandAsLong(windowCall.operands(3))
         new CumulativeWindowSpec(Duration.ofMillis(maxSize), Duration.ofMillis(step))
+
+      case FlinkSqlOperatorTable.HCUMULATE =>
+        val slide = getOperandAsLong(windowCall.operands(2))
+        val maxSize = getOperandAsLong(windowCall.operands(3))
+        new HCumulativeWindowSpec(Duration.ofMillis(maxSize), Duration.ofMillis(slide))
     }
 
     new TimeAttributeWindowingStrategy(windowSpec, timeAttributeType, timeIndex)

@@ -20,6 +20,7 @@ package org.apache.flink.table.planner.plan.nodes.exec.stream;
 
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.planner.plan.logical.CumulativeWindowSpec;
+import org.apache.flink.table.planner.plan.logical.HCumulativeWindowSpec;
 import org.apache.flink.table.planner.plan.logical.HoppingWindowSpec;
 import org.apache.flink.table.planner.plan.logical.SliceAttachedWindowingStrategy;
 import org.apache.flink.table.planner.plan.logical.TimeAttributeWindowingStrategy;
@@ -126,7 +127,21 @@ public abstract class StreamExecWindowAggregateBase extends StreamExecAggregateB
             }
             return SliceAssigners.cumulative(timeAttributeIndex, shiftTimeZone, maxSize, step);
 
-        } else {
+        } else if (windowSpec instanceof HCumulativeWindowSpec) {
+            Duration maxSize = ((HCumulativeWindowSpec) windowSpec).getMaxSize();
+            Duration slide = ((HCumulativeWindowSpec) windowSpec).getSlide();
+            Duration step = ((HCumulativeWindowSpec) windowSpec).getStep();
+            if (maxSize.toMillis() % slide.toMillis() != 0
+                    && maxSize.toMillis() % step.toMillis() != 0) {
+                throw new TableException(
+                        String.format(
+                                "HCUMULATE table function based aggregate requires maxSize must be an "
+                                        + "integral multiple of slide and step, but got maxSize %s ms, slide %s ms, step %s ms",
+                                maxSize.toMillis(), slide.toMillis(), step.toMillis()));
+            }
+            return SliceAssigners.hcumulative(timeAttributeIndex, shiftTimeZone, maxSize, slide, step);
+        }
+        else {
             throw new UnsupportedOperationException(windowSpec + " is not supported yet.");
         }
     }

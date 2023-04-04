@@ -96,6 +96,12 @@ public final class SliceAssigners {
                 rowtimeIndex, shiftTimeZone, maxSize.toMillis(), step.toMillis(), 0);
     }
 
+    public static HCumulativeSliceAssigner hcumulative(
+            int rowtimeIndex, ZoneId shfitTimeZone, Duration maxSize, Duration slide, Duration step) {
+        return new HCumulativeSliceAssigner(
+                rowtimeIndex, shfitTimeZone, maxSize.toMillis(), slide.toMillis(), 0, step.toMillis());
+    }
+
     /**
      * Creates a {@link SliceAssigner} that assigns elements which has been attached window start
      * and window end timestamp to slices. The assigned slice is equal to the given window.
@@ -377,6 +383,120 @@ public final class SliceAssigners {
                 return Optional.empty();
             } else {
                 return Optional.of(nextWindowEnd);
+            }
+        }
+    }
+
+    public static final class HCumulativeSliceAssigner extends AbstractSliceAssigner
+            implements SliceSharedAssigner {
+        private static final long serialVersionUID = 1L;
+
+        /** Creates a new {@link HCumulativeSliceAssigner} with a new specified offset. */
+        public HCumulativeSliceAssigner withOffset(Duration offset) {
+            return new HCumulativeSliceAssigner(
+                    rowtimeIndex, shiftTimeZone, maxSize, slide, offset.toMillis(), step);
+        }
+
+        private final long maxSize;
+        private final long step;
+        private final long slide;
+        private final long offset;
+        private final long sliceSize;
+        private final ReusableListIterable reuseToBeMergedList = new ReusableListIterable();
+        private final ReusableListIterable reuseExpiredList = new ReusableListIterable();
+
+        protected HCumulativeSliceAssigner(
+                int rowtimeIndex, ZoneId shiftTimeZone, long maxSize, long slide, long offset, long step) {
+            super(rowtimeIndex, shiftTimeZone);
+            if (maxSize <= 0 || slide <= 0 || step <= 0) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "HCumulative Window parameters must satisfy maxSize > 0, slide > 0 and step > 0, but got maxSize %dms, slide %dms and step %dms.",
+                                maxSize, slide, step));
+            }
+            if (maxSize % slide != 0) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "HCumulative Window requires maxSize must be an integral multiple of slide, but got maxSize %dms and slide %dms.",
+                                maxSize, slide));
+            }
+
+            if (maxSize % step != 0) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "HCumulative Window requires maxSize must be an integral multiple of step, but got maxSize %dms and step %dms.",
+                        maxSize, step));
+            }
+
+            this.maxSize = maxSize;
+            this.slide = slide;
+            this.offset = offset;
+            this.sliceSize = ArithmeticUtils.gcd(maxSize, slide);
+            this.step = step;
+        }
+
+        @Override
+        public long assignSliceEnd(long timestamp) {
+            long start = TimeWindow.getWindowStartWithOffset(timestamp, offset, sliceSize);
+            return start + sliceSize;
+        }
+
+        @Override
+        public long getLastWindowEnd(long sliceEnd) {
+            long windowStart = getWindowStart(sliceEnd);
+            return windowStart + maxSize;
+        }
+
+        @Override
+        public long getWindowStart(long windowEnd) {
+            long windowStart = TimeWindow.getWindowStartWithOffset(windowEnd - 1, offset, maxSize);
+            return windowStart;
+        }
+
+        @Override
+        public Iterable<Long> expiredSlices(long windowEnd) {
+            long windowStart = getWindowStart(windowEnd);
+            long firstSliceEnd = windowStart + sliceSize;
+            long lastSliceEnd = windowStart + maxSize;
+            if (windowEnd == firstSliceEnd) {
+                // we share state in the first slice, skip cleanup for the first slice
+                reuseExpiredList.clear();
+            } else if (windowEnd == lastSliceEnd) {
+                // when this is the last slice,
+                // we need to cleanup the shared state (i.e. first slice) and the current slice
+                reuseExpiredList.reset(windowEnd, firstSliceEnd);
+            } else {
+                // clean up current slice
+                reuseExpiredList.reset(windowEnd);
+            }
+            return reuseExpiredList;
+        }
+
+        @Override
+        public long getSliceEndInterval() {
+            return slide;
+        }
+
+        @Override
+        public void mergeSlices(long sliceEnd, MergeCallback callback) throws Exception {
+            long windowStart = getWindowStart(sliceEnd);
+            long firstSliceEnd = windowStart + slide;
+            if (sliceEnd == firstSliceEnd) {
+                // if this is the first slice, there is nothing to merge
+                reuseToBeMergedList.clear();
+            } else {
+                // otherwise, merge the current slice state into the first slice state
+                reuseToBeMergedList.reset(sliceEnd);
+            }
+            callback.merge(firstSliceEnd, reuseToBeMergedList);
+        }
+
+        @Override
+        public Optional<Long> nextTriggerWindow(long windowEnd, Supplier<Boolean> isWindowEmpty) {
+            if (isWindowEmpty.get()) {
+                return Optional.empty();
+            } else {
+                return Optional.of(windowEnd + sliceSize);
             }
         }
     }
