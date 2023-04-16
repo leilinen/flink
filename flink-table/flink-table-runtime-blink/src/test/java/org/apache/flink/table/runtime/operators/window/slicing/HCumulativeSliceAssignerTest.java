@@ -29,7 +29,7 @@ public class HCumulativeSliceAssignerTest extends SliceAssignerTestBase {
     public void testSliceAssignment() {
         SliceAssigner assigner =
                 SliceAssigners.hcumulative(
-                        0, shiftTimeZone, Duration.ofHours(5), Duration.ofHours(1), Duration.ofMinutes(1));
+                        0, shiftTimeZone, Duration.ofDays(1), Duration.ofHours(6), Duration.ofHours(1));
 
         assertEquals(
                 utcMills("1970-01-01T01:00:00"),
@@ -51,7 +51,7 @@ public class HCumulativeSliceAssignerTest extends SliceAssignerTestBase {
         }
         SliceAssigner assigner =
                 SliceAssigners.hcumulative(
-                        0, shiftTimeZone, Duration.ofHours(5), Duration.ofHours(1), Duration.ofMinutes(1));
+                        0, shiftTimeZone, Duration.ofDays(1), Duration.ofHours(6), Duration.ofHours(1));
 
         // Los_Angeles local time in epoch mills.
         // The DaylightTime in Los_Angele start at time 2021-03-14 02:00:00
@@ -90,9 +90,9 @@ public class HCumulativeSliceAssignerTest extends SliceAssignerTestBase {
     public void testGetWindowStart() {
         SliceAssigner assigner =
                 SliceAssigners.hcumulative(
-                        0, shiftTimeZone, Duration.ofHours(5), Duration.ofHours(1), Duration.ofHours(1));
+                        0, shiftTimeZone, Duration.ofDays(1), Duration.ofHours(12), Duration.ofHours(1));
         assertEquals(
-                utcMills("1969-12-31T19:00:00"),
+                utcMills("1969-12-31T12:00:00"),
                 assigner.getWindowStart(utcMills("1970-01-01T00:00:00")));
         assertEquals(
                 utcMills("1970-01-01T00:00:00"),
@@ -110,11 +110,20 @@ public class HCumulativeSliceAssignerTest extends SliceAssignerTestBase {
                 utcMills("1970-01-01T00:00:00"),
                 assigner.getWindowStart(utcMills("1970-01-01T05:00:00")));
         assertEquals(
-                utcMills("1970-01-01T01:00:00"),
+                utcMills("1970-01-01T00:00:00"),
                 assigner.getWindowStart(utcMills("1970-01-01T06:00:00")));
         assertEquals(
-                utcMills("1970-01-01T03:00:00"),
+                utcMills("1970-01-01T00:00:00"),
                 assigner.getWindowStart(utcMills("1970-01-01T08:00:00")));
+        assertEquals(
+                utcMills("1970-01-01T12:00:00"),
+                assigner.getWindowStart(utcMills("1970-01-01T13:00:00")));
+        assertEquals(
+                utcMills("1970-01-01T12:00:00"),
+                assigner.getWindowStart(utcMills("1970-01-01T14:00:00")));
+        assertEquals(
+                utcMills("1970-01-01T12:00:00"),
+                assigner.getWindowStart(utcMills("1970-01-01T15:00:00")));
     }
 
     @Test

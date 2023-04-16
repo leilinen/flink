@@ -450,7 +450,11 @@ public final class SliceAssigners {
         @Override
         public long getWindowStart(long windowEnd) {
             long windowStart = TimeWindow.getWindowStartWithOffset(windowEnd - 1, offset, maxSize);
-            return windowStart;
+            if (windowEnd - windowStart < slide) {
+                return windowStart;
+            } else {
+                return windowStart + slide;
+            }
         }
 
         @Override
