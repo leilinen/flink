@@ -97,9 +97,18 @@ public final class SliceAssigners {
     }
 
     public static HCumulativeSliceAssigner hcumulative(
-            int rowtimeIndex, ZoneId shfitTimeZone, Duration maxSize, Duration slide, Duration step) {
+            int rowtimeIndex,
+            ZoneId shfitTimeZone,
+            Duration maxSize,
+            Duration slide,
+            Duration step) {
         return new HCumulativeSliceAssigner(
-                rowtimeIndex, shfitTimeZone, maxSize.toMillis(), slide.toMillis(), 0, step.toMillis());
+                rowtimeIndex,
+                shfitTimeZone,
+                maxSize.toMillis(),
+                slide.toMillis(),
+                0,
+                step.toMillis());
     }
 
     /**
@@ -387,6 +396,7 @@ public final class SliceAssigners {
         }
     }
 
+    /** The {@link SliceAssigner} for hcumulative windows. */
     public static final class HCumulativeSliceAssigner extends AbstractSliceAssigner
             implements SliceSharedAssigner {
         private static final long serialVersionUID = 1L;
@@ -406,7 +416,12 @@ public final class SliceAssigners {
         private final ReusableListIterable reuseExpiredList = new ReusableListIterable();
 
         protected HCumulativeSliceAssigner(
-                int rowtimeIndex, ZoneId shiftTimeZone, long maxSize, long slide, long offset, long step) {
+                int rowtimeIndex,
+                ZoneId shiftTimeZone,
+                long maxSize,
+                long slide,
+                long offset,
+                long step) {
             super(rowtimeIndex, shiftTimeZone);
             if (maxSize <= 0 || slide <= 0 || step <= 0) {
                 throw new IllegalArgumentException(
@@ -425,7 +440,7 @@ public final class SliceAssigners {
                 throw new IllegalArgumentException(
                         String.format(
                                 "HCumulative Window requires maxSize must be an integral multiple of step, but got maxSize %dms and step %dms.",
-                        maxSize, step));
+                                maxSize, step));
             }
 
             this.maxSize = maxSize;

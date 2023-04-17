@@ -139,9 +139,9 @@ public abstract class StreamExecWindowAggregateBase extends StreamExecAggregateB
                                         + "integral multiple of slide and step, but got maxSize %s ms, slide %s ms, step %s ms",
                                 maxSize.toMillis(), slide.toMillis(), step.toMillis()));
             }
-            return SliceAssigners.hcumulative(timeAttributeIndex, shiftTimeZone, maxSize, slide, step);
-        }
-        else {
+            return SliceAssigners.hcumulative(
+                    timeAttributeIndex, shiftTimeZone, maxSize, slide, step);
+        } else {
             throw new UnsupportedOperationException(windowSpec + " is not supported yet.");
         }
     }

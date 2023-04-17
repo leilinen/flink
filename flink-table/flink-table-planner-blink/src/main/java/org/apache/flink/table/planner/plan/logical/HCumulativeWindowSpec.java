@@ -10,13 +10,13 @@ import java.util.Objects;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.TimeUtils.formatWithHighestUnit;
 
+/** Logical representation of a hop cumulative window specification. */
 @JsonTypeName("HCumulativeWindow")
-public class HCumulativeWindowSpec  implements WindowSpec {
+public class HCumulativeWindowSpec implements WindowSpec {
 
     public static final String FIELD_NAME_MAX_SIZE = "maxSize";
     public static final String FIELD_NAME_SLIDE = "slide";
     public static final String FIELD_NAME_STEP = "step";
-
 
     @JsonProperty(FIELD_NAME_MAX_SIZE)
     private final Duration maxSize;
